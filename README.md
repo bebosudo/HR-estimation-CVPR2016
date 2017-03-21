@@ -8,6 +8,13 @@ Implementation of CVPR2016 for Heart-Rate estimation, using the OpenCV library.
 Martina Maffei and [Alberto Chiusole][alb_website]
 
 
+# Building
+
+```
+$ make
+```
+
+
 # Dependencies
 
 To install the dependencies on a Fedora OS:
