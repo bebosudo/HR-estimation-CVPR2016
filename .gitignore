@@ -1,5 +1,8 @@
-# executable
+# executable and source libraries
 HR-estimation-CVPR2016
+lib/opencv-*.zip
+lib/opencv-*/*
+src/lena.jpg
 
 # IDE setting files
 *.sublime-project

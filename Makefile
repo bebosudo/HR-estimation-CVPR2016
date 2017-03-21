@@ -1,17 +1,17 @@
 TARGET	= HR-estimation-CVPR2016
-LIBSRCS	=
+LIBSRCS	= `pkg-config --cflags --libs opencv`
 LIBOBJS	= src/main.o
+
+CXX	= g++
 
 OPT	= -g
 PIC	=
 
-CXX	= g++
-# CFLAGS= $(OPT) $(PIC) $(XOPTS)
-CFLAGS= $(OPT)
+CFLAGS= $(OPT) $(PIC)
 
 
 $(TARGET): $(LIBOBJS)
-	$(CXX) -o $@ $(CFLAGS) $(LIBOBJS)
+	$(CXX) -o $@ $(CFLAGS) $(LIBSRCS) $(LIBOBJS)
 
 clean:
 	@/bin/rm -f $(TARGET) $(LIBOBJS)
