@@ -1,22 +1,52 @@
-// opencv header files
-#include "opencv2/core/core.hpp"
-#include "opencv2/highgui/highgui.hpp"
+// Standard include files
+#include <opencv2/opencv.hpp>
+#include <opencv2/tracking.hpp>
+
+using namespace cv;
+using namespace std;
 
 int main(int argc, char** argv) {
-    // create a variable to store the image
-    cv::Mat image;
+    // Set up tracker.
+    // Instead of MIL, you can also use
+    // BOOSTING, KCF, TLD, MEDIANFLOW or GOTURN
+    Ptr<Tracker> tracker = Tracker::create("MIL");
 
-    // open the image and store it in the 'image' variable
-    // Replace the path with where you have downloaded the image
-    image = cv::imread("src/lena.jpg");
+    // Read video
+    VideoCapture video("sample.ogg");
 
-    // create a window to display the image
-    cv::namedWindow("Display window", CV_WINDOW_AUTOSIZE);
+    // Check video is open
+    if (!video.isOpened()) {
+        cout << "Could not read video file" << endl;
+        return 1;
+    }
 
-    // display the image in the window created
-    cv::imshow("Display window", image);
+    // Read first frame.
+    Mat frame;
+    video.read(frame);
 
-    // wait for a keystroke
-    cv::waitKey(0);
+    // Define an initial bounding box
+    Rect2d bbox(287, 23, 86, 320);
+
+    // Uncomment the line below if you
+    // want to choose the bounding box
+    // bbox = selectROI(frame, false);
+
+    // Initialize tracker with first frame and bounding box
+    tracker->init(frame, bbox);
+
+    while (video.read(frame)) {
+        // Update tracking results
+        tracker->update(frame, bbox);
+
+        // Draw bounding box
+        rectangle(frame, bbox, Scalar(255, 0, 0), 2, 1);
+
+        // Display result
+        imshow("Tracking", frame);
+        int k = waitKey(1);
+        if (k == 27)
+            break;
+    }
+
     return 0;
 }
