@@ -54,28 +54,24 @@ num_corners = 50
 #original video
 #cap = cv2.VideoCapture(os.path.join(base_folder, "..", "david_double.webm"))
 
-###FERMA (2 prove) - tutto ok
-#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_ferma.webm"))
-#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_ferma1.webm"))
+#####FASE DI TEST######
 
-###AVVICINARSI/ALLONTANARSI
+#### 1) AVVICINAMENTO####
+#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "1avvicinamento.webm"))
 
-#test 1) troppo vicino -> esce con errore se mi avvicino troppo ---lontano va bene
-cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_lontanovicino.webm"))
+#### 2) ALLONTANAMENTO####
+#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "2lontananza.webm"))
 
-#test 2) nel riallontanarsi vede 2 facce -> perchè?? (allontanata troppo velocemente?)
-#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_lontanovicino2.webm"))
+#### 1 e 2 insieme) AVVICINANDOSI E POI ALLONTANANDOSI
+cap = cv2.VideoCapture(os.path.join(base_folder, "..", "2lontanovicino.webm"))
 
-### ROTAZIONE (3 test)
+#### 3) ROTAZIONE DX###
+#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "3rotazione_dx1.webm"))
+#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "3rotazione_dx2.webm"))
 
-#test 1) - circa 45° poi si blocca e riprende quando ritorna a 45° (circa) (sia verso dx che verso sx)
-#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_rotazione1.webm"))
-
-#test 2) tutto ok -> solo un po' lento
-#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_rotazione2.webm"))
-
-#test 3) - fa fatica già a 20/25°
-#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "martina_rotazione3.webm"))
+#### 4) ROTAZIONE SX###
+#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "4rotazione_sx1.webm"))
+#cap = cv2.VideoCapture(os.path.join(base_folder, "..", "4rotazione_sx2.webm"))
 
 while(cap.isOpened()):
     ret, frame = cap.read()
