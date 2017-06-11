@@ -56,9 +56,15 @@ while(cap.isOpened()):
 
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
+    #MSEC
+    #msec = cap.get(cv2.CAP_PROP_POS_MSEC)
+    #print (msec)
+
     if len(faces) > 1:
         sys.stderr.write("More than one face detected ('{}'). "
                          "Please provide a video with a face only.\n".format(len(faces)))
+        msec = cap.get(cv2.CAP_PROP_POS_MSEC)
+        print (msec)
         exit()
     elif len(faces) == 0:
         print("faces = ", len(faces)) if len(faces) != 2 else None
@@ -76,6 +82,10 @@ while(cap.isOpened()):
     if len(eyes) != 2:
         print("eyes = ", len(eyes))
         continue
+
+    # The mouth region is around 1 time lower than the eyes region, so
+    # this means we can restrict the ROI of the mouth to improve the speed
+    # and the efficiency of the cascade classifier.
 
     assert eyes.shape[0] == 2
     average_eye_height_reduced = int(eyes[:, 3].sum() * .8) // 2
