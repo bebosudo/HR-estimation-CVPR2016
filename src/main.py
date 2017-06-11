@@ -7,20 +7,7 @@ import sys
 import os
 from collections import namedtuple
 
-Coord = namedtuple('coord', 'x y w h')
-
-# Order: capture e poi tracking
-#      * CAPTURE = [ ViolaJones (Cascade) + Shi-Tomasi==good features to track (per i facial landmarks da selezionare) ]
-#      * TRACKING = KLT
-# inizialmente trovare la faccia, poi applicare shi tomasi per trovare i punti interessanti da tracciare,
-# ed infine KLT traccia gli spostamenti nel video, frame per frame
-# while frames in video:
-#     catturo il viso del soggetto
-#     if numero punti catturati < N:
-#         rieseguo la cattura dei punti (=good features to TRACK), che hanno poi da essere tracciati con KLT
-#     continuo il tracciamento con KLT
-# analisi delle ROI per calcolare e studiare la crominanza, etc.. --> qui
-# a questo punto si applica il paper sulla crominanza
+# Coord = namedtuple('coord', 'x y w h')
 
 base_folder = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,7 +37,19 @@ white_color.fill(255)
 black_color = white_color - white_color
 num_corners = 50
 
-cap = cv2.VideoCapture(os.path.join(base_folder, "..", "david_double.webm"))
+if len(sys.argv) == 1:
+    print(" ERROR: Insert the video to load as an argument after the script.",
+          file=sys.stderr)
+    exit(1)
+
+input_file_name = sys.argv[1]
+if not os.path.exists(input_file_name):
+    print(" ERROR: The input file provided does not exist.",
+          file=sys.stderr)
+    exit(1)
+
+cap = cv2.VideoCapture(input_file_name)
+
 while(cap.isOpened()):
     ret, frame = cap.read()
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -77,10 +76,6 @@ while(cap.isOpened()):
     if len(eyes) != 2:
         print("eyes = ", len(eyes))
         continue
-
-    # The mouth region is around 1 time lower than the eyes region, so
-    # this means we can restrict the ROI of the mouth to improve the speed
-    # and the efficiency of the cascade classifier.
 
     assert eyes.shape[0] == 2
     average_eye_height_reduced = int(eyes[:, 3].sum() * .8) // 2
@@ -112,20 +107,25 @@ while(cap.isOpened()):
     cheecks[:, 3] = average_eye_height_reduced
 
     # Move the position of the cheecks a bit farther from the mouth.
-    cheecks[left_eye][0] -= int(fw / 16)
-    cheecks[1 - left_eye][0] += int(fw / 16)
+    cheecks[left_eye][0] -= int(fw / 60)
+    cheecks[left_eye][2] = int(cheecks[left_eye][2] * 4 // 5)
+    cheecks[1 - left_eye][0] += int(fw / 20)
+    cheecks[1 - left_eye][2] = int(cheecks[1 - left_eye][2] * 4 // 5)
 
     # Create a ROI as wide as the region below the eyes plus the two cheecks.
     ROI_array = np.empty((average_eye_height_reduced,
                           bew + cheecks[:, 2].sum(),
                           3),
-                        np.uint8)
+                         np.uint8)
 
     # Copy the region below the eyes to the ROI, and copy the two cheecks on
     # the right, alongside the region below the eyes.
-    np.copyto(ROI_array[:, :cheecks[left_eye][2]], frame[fy+cheecks[left_eye][1]:fy+cheecks[left_eye][1]+cheecks[left_eye][3], fx+cheecks[left_eye][0]:fx+cheecks[left_eye][0]+cheecks[left_eye][2]])
-    np.copyto(ROI_array[:, cheecks[left_eye][2]:cheecks[left_eye][2]+bew], frame[bey:bey + beh, bex:bex + bew])
-    np.copyto(ROI_array[:, cheecks[left_eye][2]+bew:], frame[fy+cheecks[1-left_eye][1]:fy+cheecks[1-left_eye][1]+cheecks[1-left_eye][3], fx+cheecks[1-left_eye][0]:fx+cheecks[1-left_eye][0]+cheecks[1-left_eye][2]])
+    np.copyto(ROI_array[:, :cheecks[left_eye][2]], frame[fy + cheecks[left_eye][1]:fy + cheecks[left_eye][
+              1] + cheecks[left_eye][3], fx + cheecks[left_eye][0]:fx + cheecks[left_eye][0] + cheecks[left_eye][2]])
+    np.copyto(ROI_array[:, cheecks[left_eye][2]:cheecks[left_eye][
+              2] + bew], frame[bey:bey + beh, bex:bex + bew])
+    np.copyto(ROI_array[:, cheecks[left_eye][2] + bew:], frame[fy + cheecks[1 - left_eye][1]:fy + cheecks[1 - left_eye][1] +
+                                                               cheecks[1 - left_eye][3], fx + cheecks[1 - left_eye][0]:fx + cheecks[1 - left_eye][0] + cheecks[1 - left_eye][2]])
 
     # Draw the region below the eyes.
     cv2.rectangle(frame, (bex, bey), (bex + bew, bey + beh),
@@ -171,6 +171,35 @@ while(cap.isOpened()):
     # fw, fh = corners[:, 0].max() - fx, corners[:, 1].max() - fy
     """
 
+    # TO-DO: this could be optimized by reading the ROI just once
+    # (and maybe without extracting the ROI at all?).
+    blue_ROI = ROI_array[:, :, 0]
+    green_ROI = ROI_array[:, :, 1]
+    red_ROI = ROI_array[:, :, 2]
+
+    # Calculate the arithmetic mean and std for each color for each frame.
+    b_mean = blue_ROI.mean()
+    g_mean = green_ROI.mean()
+    r_mean = red_ROI.mean()
+
+    b_std = blue_ROI.std()
+    g_std = green_ROI.std()
+    r_std = red_ROI.std()
+
+    # Formulae from the paper "Self-adaptive Matrix Completion..."
+    R_n = red_ROI * r_std / r_mean
+    G_n = green_ROI * g_std / g_mean
+    X = 3 * R_n - 2 * G_n
+    Y = 1.5 * R_n + G_n - 1.5 * (blue_ROI * b_std / b_mean)
+
+    # Apply the pass-banded filter.
+    X_f, Y_f = X, Y
+
+    alpha = X_f.std() / Y_f.std()
+    crominance = X_f - alpha * Y_f
+
+    print("C = {}".format(crominance.mean()))
+
     cv2.imshow('video', frame)
     cv2.imshow('ROI', ROI_array)
 
@@ -182,36 +211,15 @@ cap.release()
 cv2.destroyAllWindows()
 
 
-# face_already_recognized = cap.get(cv2.CAP_PROP_POS_MSEC)
-
-"""
-img = cv2.imread('lena.jpg')
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-print len(faces)
-for idx, (fx, fy, fw, fh) in enumerate(faces):
-    roi = img[x:x + w, y:y + h]
-    print roi[0, 1]
-    # Save the ROI as a jpg with the highest quality available.
-    # cv2.imwrite("test{}.jpg".format(idx), roi, [cv2.IMWRITE_JPEG_QUALITY,
-    # 100])
-    cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-    roi_gray = gray[y:y + h, x:x + w]
-    roi_color = img[y:y + h, x:x + w]
-    eyes = eye_cascade.detectMultiScale(roi_gray)
-    for (ex, ey, ew, eh) in eyes:
-        cv2.rectangle(roi_color, (ex, ey), (ex + ew, ey + eh), (0, 255, 0), 2)
-
-cv2.imshow('img', img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-"""
-
-
-# mouth = mouth_cascade.detectMultiScale(gray[y + scaling_down:y + h, x:x + w],
-#                                        scaleFactor=1.1,
-#                                        minNeighbors=10)
-# for mx, my, mw, mh in mouth:
-#     cv2.rectangle(gray, (x + mx, y + my), (x + mx + mw, y + my + mh),
-#                   color=white_color.tolist(), thickness=1)
+# Order: capture e poi tracking
+#      * CAPTURE = [ ViolaJones (Cascade) + Shi-Tomasi==good features to track (per i facial landmarks da selezionare) ]
+#      * TRACKING = KLT
+# inizialmente trovare la faccia, poi applicare shi tomasi per trovare i punti interessanti da tracciare,
+# ed infine KLT traccia gli spostamenti nel video, frame per frame
+# while frames in video:
+#     catturo il viso del soggetto
+#     if numero punti catturati < N:
+#         rieseguo la cattura dei punti (=good features to TRACK), che hanno poi da essere tracciati con KLT
+#     continuo il tracciamento con KLT
+# analisi delle ROI per calcolare e studiare la crominanza, etc..
+# a questo punto si applica il paper sulla crominanza
